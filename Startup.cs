@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using QuotesApi.Data;
+using Swashbuckle.AspNetCore.Swagger;
 
 namespace QuotesApi
 {
@@ -22,6 +24,12 @@ namespace QuotesApi
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
             services.AddDbContext<QuotesDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new Info { Title = "Quotes API", Version = "v1" });
+            });
+            services
+                .AddMvcCore(options => options.OutputFormatters.Add(new XmlSerializerOutputFormatter()));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -37,7 +45,14 @@ namespace QuotesApi
             }
 
             app.UseHttpsRedirection();
-            quotesDbContext.Database.EnsureCreated();
+            // quotesDbContext.Database.EnsureCreated(); // use if database first
+            // quotesDbContext.Database.Migrate(); // use if code first approach
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Quotes API V1");
+                c.RoutePrefix = string.Empty;
+            });
             app.UseMvc();
         }
     }
