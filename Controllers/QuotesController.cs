@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using FluentValidation.Results;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuotesApi.Data;
 using QuotesApi.Models;
@@ -12,6 +12,7 @@ namespace QuotesApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class QuotesController : ControllerBase
     {
 
@@ -25,6 +26,8 @@ namespace QuotesApi.Controllers
 
         // GET: api/Quotes
         [HttpGet]
+        [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Client)]
+        [AllowAnonymous]
         public IActionResult Get(string sort)
         {
             IQueryable<Quote> quotes;
@@ -64,6 +67,15 @@ namespace QuotesApi.Controllers
             return Ok(_quotesDbContext.Quotes.Find(id));
         }
 
+        [HttpGet("[action]")]
+        public IActionResult MyQuote()
+        {
+            var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier).Value;
+            
+            var quotes = _quotesDbContext.Quotes.Where(q => q.UserId == userId);
+            return Ok(quotes);
+        }
+
         //[HttpGet("[action]/{id}")]
         //public int GetById(int id)
         //{
@@ -74,6 +86,8 @@ namespace QuotesApi.Controllers
         [HttpPost]
         public IActionResult Post([FromBody] Quote quote)
         {
+            var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier).Value;
+            quote.UserId = userId;
 
             var messages = QuoteValidation(quote);
 
@@ -92,13 +106,19 @@ namespace QuotesApi.Controllers
         [HttpPut("{id}")]
         public IActionResult Put(int id, [FromBody] Quote newQuote)
         {
-            var oldQuote = _quotesDbContext.Quotes.Find(id);
+            var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier).Value;
 
+            var oldQuote = _quotesDbContext.Quotes.Find(id);
             var messages = QuoteValidation(oldQuote);
 
             if (messages.Length > 0)
             {
                 return NotFound(new { message = messages });
+            }
+
+            if (userId != oldQuote.UserId)
+            {
+                return BadRequest(new { message = "You don't have permission to update this record" });
             }
 
             oldQuote.Title = newQuote.Title;
@@ -116,10 +136,16 @@ namespace QuotesApi.Controllers
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
+            var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier).Value;
+
             var quote = _quotesDbContext.Quotes.Find(id);
             if (quote == null)
             {
                 return NotFound(new { message = $"No record found with the id:{id}" });
+            }
+            if (userId != quote.UserId)
+            {
+                return BadRequest(new { message = "You don't have permission to delete this record" });
             }
 
             _quotesDbContext.Quotes.Remove(quote);

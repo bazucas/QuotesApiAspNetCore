@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
@@ -30,6 +31,17 @@ namespace QuotesApi
             });
             services
                 .AddMvcCore(options => options.OutputFormatters.Add(new XmlSerializerOutputFormatter()));
+            services.AddResponseCaching();
+            // 1. Add Authentication Services
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            }).AddJwtBearer(options =>
+            {
+                options.Authority = "https://quotesapi2.auth0.com/";
+                options.Audience = "https://localhost:44309";
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -53,6 +65,8 @@ namespace QuotesApi
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "Quotes API V1");
                 c.RoutePrefix = string.Empty;
             });
+            app.UseResponseCaching();
+            app.UseAuthentication();
             app.UseMvc();
         }
     }

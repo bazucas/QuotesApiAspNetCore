@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using Newtonsoft.Json;
+using System;
 
 namespace QuotesApi.Models
 {
@@ -13,5 +11,7 @@ namespace QuotesApi.Models
         public string Description { get; set; }
         public string Type { get; set; }
         public DateTime CreatedAt { get; set; }
+        [JsonIgnore]
+        public string UserId { get; set; }
     }
 }
