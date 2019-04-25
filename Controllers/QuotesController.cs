@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -24,9 +25,30 @@ namespace QuotesApi.Controllers
 
         // GET: api/Quotes
         [HttpGet]
-        public IActionResult Get()
+        public IActionResult Get(string sort)
         {
-            return Ok(_quotesDbContext.Quotes);
+            IQueryable<Quote> quotes;
+            switch (sort)
+            {
+                case "desc":
+                    quotes = _quotesDbContext.Quotes.OrderByDescending(q => q.CreatedAt);
+                    break;
+                case "asc":
+                    quotes = _quotesDbContext.Quotes.OrderBy(q => q.CreatedAt);
+                    break;
+                default:
+                    quotes = _quotesDbContext.Quotes;
+                    break;
+            }
+            return Ok(quotes);
+        }
+
+        [HttpGet]
+        [Route("[action]")]
+        public IActionResult SearchQuote(string type)
+        {
+            var quotes = _quotesDbContext.Quotes.Where(q => q.Type.StartsWith(type));
+            return Ok(quotes);
         }
 
         // GET: api/Quotes/5
@@ -41,6 +63,12 @@ namespace QuotesApi.Controllers
 
             return Ok(_quotesDbContext.Quotes.Find(id));
         }
+
+        //[HttpGet("[action]/{id}")]
+        //public int GetById(int id)
+        //{
+        //    return id;
+        //}
 
         // POST: api/Quotes
         [HttpPost]
@@ -82,7 +110,7 @@ namespace QuotesApi.Controllers
             //    System.Globalization.CultureInfo.InvariantCulture);
             _quotesDbContext.SaveChanges();
             return Ok(new { message = "Quote updated successfuly" });
-        }
+        } 
 
         // DELETE: api/ApiWithActions/5
         [HttpDelete("{id}")]
@@ -112,6 +140,15 @@ namespace QuotesApi.Controllers
                 }
             }
             return messages.ToArray();
+        }
+
+        [HttpGet("[action]")]
+        public IActionResult PagingQuote(int? pageNumber, int? pageSize)
+        {
+            var quotes = _quotesDbContext.Quotes;
+            var currentPageNumber = pageNumber ?? 1;
+            var currentPageSize = pageSize ?? 5;
+            return Ok(quotes.Skip((currentPageNumber - 1) * currentPageSize).Take(currentPageSize));
         }
     }
 }
